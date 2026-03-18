@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> One Page Proposal Editor </title>
+  <title>One-Page Editor</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -11,6 +11,9 @@
   <!-- 렌더링 엔진 (html-to-image) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  
+  <!-- 마크다운 변환 라이브러리 (HTML to Markdown) -->
+  <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
 
   <!-- 폰트 및 아이콘 CORS 보안 에러 완벽 차단 로더 -->
   <script>
@@ -51,13 +54,10 @@
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #1e293b; border-radius: 10px; }
     .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #334155; }
-
     .canvas-scrollbar::-webkit-scrollbar { width: 4px; }
     .canvas-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .canvas-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.2); border-radius: 4px; }
 
-    .break-keep { word-break: keep-all; }
-    
     /* --- GDD 렌더링 스타일 --- */
     .gdd-content { color: #cbd5e1; line-height: 1.7; word-break: keep-all; }
     .gdd-content h2 { font-size: 1.5rem; font-weight: 800; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
@@ -66,7 +66,66 @@
     .gdd-content ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
     .gdd-content li { margin-bottom: 0.4rem; }
     .gdd-content strong { color: #fff; font-weight: 700; }
+
+    /* =========================================
+       ✨ 레이아웃 최적화 CSS (깨짐 방지 완벽 격리)
+       ========================================= */
+    .layout-container, .col-visual, .col-info, .sect-loop, .sect-overview, .sect-usp {
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    #pitch-board:not(.show-visual) .col-visual { display: none !important; }
+    #pitch-board:not(.show-loop) .sect-loop { display: none !important; }
+    #pitch-board:not(.show-overview) .sect-overview { display: none !important; }
+    #pitch-board:not(.show-usp) .sect-usp { display: none !important; }
+
+    /* CORE LOOP 요소 기본 셋업 */
+    .loop-circle { transition: all 0.3s; display: flex; align-items: center; justify-content: center; }
+    .loop-line { transition: all 0.3s; position: absolute; top: 50%; transform: translateY(-50%); border-top: 2px dashed rgba(255,255,255,0.2); z-index: 0; }
+    .loop-container { position: relative; z-index: 10; display: flex; justify-content: space-between; align-items: center; width: 100%; height: 100%; }
+    #disp-prompt-container { transition: all 0.3s; }
+
+    /* 1. 클래식 와이드 (layout-classic) */
+    #pitch-board.layout-classic .layout-container { display: flex; flex-direction: row; gap: 2rem; height: 600px; }
+    #pitch-board.layout-classic .col-visual { width: 760px; height: 100%; display: flex; flex-direction: column; flex-shrink: 0; }
+    #pitch-board.layout-classic .col-info { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; height: 100%; min-width: 0; }
+    #pitch-board.layout-classic .sect-loop { height: 170px; flex-shrink: 0; padding: 1.5rem; display: flex; flex-direction: column;}
+    #pitch-board.layout-classic .sect-overview { height: 140px; flex-shrink: 0; padding: 1.5rem; display: flex; flex-direction: column;}
+    #pitch-board.layout-classic .sect-overview-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 2rem; row-gap: 0.75rem; width: 100%; height: 100%; align-content: center; }
+    #pitch-board.layout-classic .sect-usp { flex: 1; padding: 1.5rem; display: flex; flex-direction: column; }
+    #pitch-board.layout-classic .loop-circle { width: 90px; height: 90px; }
+    #pitch-board.layout-classic .loop-line { left: 4rem; right: 4rem; }
+    #pitch-board.layout-classic .loop-container { padding: 0 1rem; }
+    #pitch-board.layout-classic #disp-prompt-container { max-height: 140px; }
+
+    /* 2. 시네마틱 상하 (layout-cinematic) */
+    #pitch-board.layout-cinematic .layout-container { display: flex; flex-direction: column; gap: 1.5rem; height: 600px; }
+    #pitch-board.layout-cinematic .col-visual { width: 100%; height: 380px; flex-shrink: 0; }
+    #pitch-board.layout-cinematic .col-info { width: 100%; flex: 1; display: flex; flex-direction: row; gap: 1.5rem; min-height: 0; }
+    #pitch-board.layout-cinematic .sect-loop { width: 30%; height: 100%; padding: 1.25rem; flex-shrink: 0; display: flex; flex-direction: column;}
+    #pitch-board.layout-cinematic .sect-overview { width: 30%; height: 100%; padding: 1.25rem; flex-shrink: 0; display: flex; flex-direction: column;}
+    #pitch-board.layout-cinematic .sect-overview-grid { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; height: 100%; justify-content: center; }
+    #pitch-board.layout-cinematic .sect-usp { flex: 1; height: 100%; padding: 1.25rem; min-width: 0; display: flex; flex-direction: column;}
+    #pitch-board.layout-cinematic .loop-circle { width: 70px; height: 70px; }
+    #pitch-board.layout-cinematic .loop-line { left: 2.5rem; right: 2.5rem; }
+    #pitch-board.layout-cinematic .loop-container { padding: 0; justify-content: space-around; }
+    #pitch-board.layout-cinematic #disp-prompt-container { max-height: 80px; }
+    #pitch-board.layout-cinematic .sect-usp p { font-size: 0.8rem; line-height: 1.3; } /* 시네마틱 한정 텍스트 크기 조절 */
+
+    /* 3. 그리드 대시보드 (layout-grid) */
+    #pitch-board.layout-grid .layout-container { display: flex; flex-direction: row-reverse; gap: 1.5rem; height: 600px; }
+    #pitch-board.layout-grid .col-visual { width: 620px; height: 100%; flex-shrink: 0; }
+    #pitch-board.layout-grid .col-info { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; gap: 1.5rem; height: 100%; min-width: 0; }
+    #pitch-board.layout-grid .sect-loop { grid-column: 1 / 3; height: 180px; padding: 1.5rem; display: flex; flex-direction: column;}
+    #pitch-board.layout-grid .sect-overview { grid-column: 1 / 2; height: 100%; padding: 1.5rem; display: flex; flex-direction: column;}
+    #pitch-board.layout-grid .sect-overview-grid { display: flex; flex-direction: column; gap: 1.25rem; width: 100%; height: 100%; justify-content: center; }
+    #pitch-board.layout-grid .sect-usp { grid-column: 2 / 3; height: 100%; padding: 1.5rem; display: flex; flex-direction: column; }
+    #pitch-board.layout-grid .loop-circle { width: 90px; height: 90px; }
+    #pitch-board.layout-grid .loop-line { left: 8rem; right: 8rem; }
+    #pitch-board.layout-grid .loop-container { padding: 0 3rem; justify-content: space-between; }
+    #pitch-board.layout-grid #disp-prompt-container { max-height: 140px; }
   </style>
+
 </head>
 <body class="bg-[#02040a] text-gray-200 font-noto overflow-hidden flex flex-col h-screen">
 
@@ -94,6 +153,48 @@
     </div>
   </div>
 
+  <!-- 도움말 (Help) Modal -->
+  <div id="help-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] hidden flex-col items-center justify-center transition-all duration-300 opacity-0 pointer-events-none">
+    <div id="help-modal-content" class="bg-[#0d1323] border border-[#1e293b] rounded-2xl p-8 w-[600px] max-h-[85vh] flex flex-col shadow-2xl transform scale-95 transition-transform duration-300">
+      <div class="flex justify-between items-center mb-2 shrink-0">
+        <h2 class="text-2xl font-black text-white flex items-center gap-2"><i class="ph ph-book-open text-[#00f2fe]"></i> 에디터 완벽 사용 가이드</h2>
+        <button onclick="closeHelpModal()" class="text-gray-400 hover:text-white transition-colors"><i class="ph ph-x text-2xl"></i></button>
+      </div>
+      <p class="text-xs text-[#00f2fe] mb-6 shrink-0 font-medium tracking-wide">One-Page Editor의 핵심 기능과 100% 활용 방법을 상세히 안내해 드립니다.</p>
+      
+      <div class="overflow-y-auto custom-scrollbar flex-1 pr-4 space-y-6 text-gray-300 text-[13px] leading-relaxed break-keep">
+        <div class="bg-white/5 p-4 rounded-xl border border-white/10">
+          <h4 class="text-[#00f2fe] font-bold text-base mb-2 flex items-center gap-1.5"><i class="ph ph-key text-lg"></i> 1. AI 활성화를 위한 API 키 설정</h4>
+          <p>AI 자동 생성 기능을 사용하려면 제미나이(Gemini) API 키가 필요합니다. 우측 상단의 <strong>톱니바퀴 아이콘</strong>을 클릭하여 무료로 발급받은 키를 입력해 주세요.</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl border border-white/10">
+          <h4 class="text-[#00f2fe] font-bold text-base mb-2 flex items-center gap-1.5"><i class="ph ph-magic-wand text-lg"></i> 2. 아이디어 한 줄로 기획서 자동 생성</h4>
+          <p>상단 검색창에 게임의 핵심 아이디어를 자유롭게 입력하고 <strong>[기획서 굽기]</strong> 버튼을 클릭하세요. AI가 장르, 타겟층, 코어 루프, 주요 특징(USP)까지 구조화된 기획서를 즉시 작성해 줍니다.</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl border border-white/10">
+          <h4 class="text-[#00f2fe] font-bold text-base mb-2 flex items-center gap-1.5"><i class="ph ph-palette text-lg"></i> 3. 디자인 및 테마 커스터마이징</h4>
+          <p>좌측 설정 패널의 <strong>'포인트 컬러 동기화'</strong>를 통해 메인 색상을 지정하면 전체 UI의 톤앤매너가 자동으로 어우러지게 변경됩니다. 클래식, 시네마틱, 그리드 3가지 레이아웃 템플릿도 마음대로 교체해 보세요!</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl border border-white/10">
+          <h4 class="text-[#00f2fe] font-bold text-base mb-2 flex items-center gap-1.5"><i class="ph ph-pencil-simple text-lg"></i> 4. 디테일 수정 및 컨셉 아트 추가</h4>
+          <p>AI가 작성한 내용 중 수정이 필요한 부분은 좌측 패널의 텍스트 박스에서 직접 편집할 수 있습니다. <strong>[이미지 선택]</strong> 버튼을 눌러 로컬에 있는 컨셉 아트나 로고 이미지를 업로드해 시각적인 완성도를 높여보세요.</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl border border-white/10">
+          <h4 class="text-[#00f2fe] font-bold text-base mb-2 flex items-center gap-1.5"><i class="ph ph-robot text-lg"></i> 5. 상세 기획서 (GDD) 확장 작성</h4>
+          <p>원페이지 요약본으로 부족하다면 좌측 중앙의 <strong>[GDD 자동 작성하기]</strong> 버튼을 클릭하세요. 세계관, 시스템, BM을 포함한 심도 있는 문서를 이어서 작성해 줍니다.</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl border border-white/10">
+          <h4 class="text-[#00f2fe] font-bold text-base mb-2 flex items-center gap-1.5"><i class="ph ph-download-simple text-lg"></i> 6. 고해상도 추출 및 문서 저장</h4>
+          <p>우측 상단의 다운로드 버튼을 통해 완성된 기획서를 <strong>고화질 PDF 또는 PNG</strong>로 안전하게 추출할 수 있습니다. <strong>[SVG]</strong> 버튼을 누르면 코드가 복사되니 피그마(Figma)에 바로 붙여넣기하여 작업해 보세요!</p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end shrink-0 pt-5 border-t border-white/10">
+        <button onclick="closeHelpModal()" class="bg-gradient-to-r from-[#00f2fe] to-[#4facfe] hover:scale-105 text-[#05080f] px-8 py-3 rounded-xl font-black text-sm transition-all shadow-lg shadow-[#00f2fe]/20">가이드 닫기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
@@ -108,7 +209,7 @@
   <header class="h-[76px] shrink-0 bg-[#0d1323] border-b border-[#1e293b] px-6 flex items-center justify-between z-30 shadow-md">
     <div class="flex items-center gap-2 shrink-0 w-[240px]">
       <i class="ph ph-magic-wand text-[#00f2fe] text-2xl"></i>
-      <h2 class="text-xl font-bold text-white tracking-wide">One Page Proposal Editor</h2>
+      <h2 class="text-xl font-bold text-white tracking-wide">One-Page Editor</h2>
     </div>
 
     <div class="flex items-center gap-4 flex-1 max-w-3xl mx-6">
@@ -125,6 +226,10 @@
     </div>
 
     <div class="flex items-center gap-3 shrink-0">
+      <button onclick="openHelpModal()" title="사용 방법 가이드" class="relative flex items-center justify-center bg-[#05080f] hover:bg-[#1e293b] border border-[#1e293b] rounded-full w-10 h-10 transition-colors mr-1">
+        <i class="ph ph-question text-gray-300 text-xl hover:text-[#00f2fe] transition-colors"></i>
+      </button>
+
       <button onclick="openApiKeyModal()" title="API 설정" class="relative flex items-center justify-center bg-[#05080f] hover:bg-[#1e293b] border border-[#1e293b] rounded-full w-10 h-10 transition-colors">
         <i class="ph ph-gear text-gray-300 text-xl"></i>
         <span id="api-key-indicator" class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-[#0d1323] rounded-full transition-colors"></span>
@@ -132,11 +237,14 @@
 
       <div class="w-px h-6 bg-[#1e293b] mx-1"></div>
       
-      <button onclick="downloadFile('pdf')" title="PDF 다운로드" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2.5 rounded-full border border-red-500/20 transition-colors flex items-center justify-center gap-2 group">
-        <i class="ph ph-file-pdf text-base group-hover:scale-110 transition-transform"></i> <span class="text-xs font-bold">PDF</span>
+      <button onclick="downloadFile('pdf')" title="PDF 다운로드" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 w-10 h-10 rounded-full border border-red-500/20 transition-colors flex items-center justify-center group">
+        <i class="ph ph-file-pdf text-lg group-hover:scale-110 transition-transform"></i>
       </button>
-      <button onclick="downloadFile('png')" title="PNG 다운로드" class="bg-white/5 hover:bg-white/10 text-white px-4 py-2.5 rounded-full border border-white/10 transition-colors flex items-center justify-center gap-2 group">
-        <i class="ph ph-image text-base group-hover:scale-110 transition-transform"></i> <span class="text-xs font-bold">PNG</span>
+      <button onclick="downloadFile('png')" title="PNG 다운로드" class="bg-white/5 hover:bg-white/10 text-white w-10 h-10 rounded-full border border-white/10 transition-colors flex items-center justify-center group">
+        <i class="ph ph-image text-lg group-hover:scale-110 transition-transform"></i>
+      </button>
+      <button id="btn-copy-svg" onclick="copySvgToClipboard()" title="SVG 복사 (피그마용)" class="bg-[#64ffda] hover:bg-[#4ae8c1] text-[#05080f] w-10 h-10 rounded-full shadow-[0_0_15px_rgba(100,255,218,0.3)] transition-all hover:scale-105 flex items-center justify-center group">
+        <i id="icon-copy-svg" class="ph ph-copy text-lg group-hover:scale-110 transition-transform"></i>
       </button>
     </div>
   </header>
@@ -148,7 +256,7 @@
     <aside class="w-[380px] shrink-0 h-full overflow-y-auto bg-[#0d1323] border border-[#1e293b] rounded-3xl p-6 custom-scrollbar flex flex-col gap-6 shadow-2xl relative">
       
       <!-- 테마 컨트롤러 -->
-      <div class="bg-[#131b2f] p-5 rounded-xl border border-white/5 space-y-5">
+      <div class="bg-[#131b2f] p-5 rounded-xl border border-white/5 space-y-5 shrink-0">
         <h3 class="text-xs font-bold text-[#64ffda] uppercase tracking-widest flex items-center gap-2">
           <i class="ph ph-palette text-sm"></i> 테마 & 디자인 설정
         </h3>
@@ -176,19 +284,11 @@
             </select>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-[11px] text-gray-400 flex items-center gap-1.5"><i class="ph ph-layout"></i> 좌우 레이아웃</span>
+            <span class="text-[11px] text-gray-400 flex items-center gap-1.5"><i class="ph ph-layout"></i> 캔버스 레이아웃</span>
             <select onchange="updateTheme('layout', this.value)" id="select-layout" class="w-[140px] bg-[#05080f] border border-[#1e293b] text-white text-xs rounded-lg px-3 py-1.5 outline-none focus:border-[#00f2fe] cursor-pointer">
-              <option value="default">기본 (이미지 좌측)</option>
-              <option value="reversed">반전 (이미지 우측)</option>
-            </select>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-[11px] text-gray-400 flex items-center gap-1.5"><i class="ph ph-texture"></i> 배경 스킨</span>
-            <select onchange="updateTheme('bgPattern', this.value)" id="select-pattern" class="w-[140px] bg-[#05080f] border border-[#1e293b] text-white text-xs rounded-lg px-3 py-1.5 outline-none focus:border-[#00f2fe] cursor-pointer">
-              <option value="carbon">카본 파이버</option>
-              <option value="dots">도트 그리드</option>
-              <option value="grid">라인 그리드</option>
-              <option value="none">패턴 없음</option>
+              <option value="layout-classic">클래식 와이드 (기본)</option>
+              <option value="layout-cinematic">시네마틱 (상하)</option>
+              <option value="layout-grid">그리드 보드 (우측아트)</option>
             </select>
           </div>
         </div>
@@ -206,21 +306,20 @@
         </div>
       </div>
 
-      <!-- GDD 자동 생성 블록 (렌더링 버그 유발 요소 완전 제거 및 구조 단순화) -->
-      <div class="bg-[#0d1323] p-5 rounded-xl border border-[#00f2fe]/40 shadow-[0_0_15px_rgba(0,242,254,0.1)] flex flex-col gap-3">
-        <h3 class="text-sm font-semibold text-[#00f2fe] flex items-center gap-2">
-          <i class="ph ph-file-text text-base"></i> 상세 기획서 (GDD) 확장
-        </h3>
-        <p class="text-[10px] text-gray-400 leading-snug">
-          요약 피치를 바탕으로 세계관, 시스템, BM을 포함하는 상세 문서를 캔버스 하단에 자동 생성합니다.
-        </p>
-        <button id="btn-gdd" onclick="generateDetailedGDD()" class="w-full bg-[#00f2fe]/10 hover:bg-[#00f2fe]/20 text-[#00f2fe] py-2.5 rounded-lg border border-[#00f2fe]/30 text-xs font-bold transition-all flex justify-center items-center gap-2 mt-1">
-          <i id="icon-gdd" class="ph ph-robot text-base"></i> <span id="text-gdd">GDD 자동 작성하기</span>
-        </button>
+      <!-- GDD 자동 생성 블록 -->
+      <div class="bg-gradient-to-br from-[#131b2f] to-[#0a101d] p-4 rounded-xl border border-[#00f2fe]/30 relative overflow-hidden shrink-0">
+        <div class="absolute -right-4 -top-4 w-16 h-16 bg-[#00f2fe]/10 rounded-full blur-xl"></div>
+        <div class="relative z-10 space-y-3">
+          <h3 class="text-sm font-semibold text-[#00f2fe] flex items-center gap-2"><i class="ph ph-file-text"></i> 상세 기획서 (GDD) 확장</h3>
+          <p class="text-[10px] text-gray-400 leading-snug">요약 기획을 바탕으로 세계관, 시스템, BM을 포함하는 상세 문서를 캔버스 하단에 자동 생성합니다.</p>
+          <button id="btn-gdd" onclick="generateDetailedGDD()" class="w-full bg-[#00f2fe]/10 hover:bg-[#00f2fe]/20 text-[#00f2fe] py-2 rounded-lg border border-[#00f2fe]/30 text-xs font-bold transition-all flex justify-center items-center gap-2">
+            <i id="icon-gdd" class="ph ph-robot"></i> <span id="text-gdd">GDD 자동 작성하기</span>
+          </button>
+        </div>
       </div>
 
       <!-- 기획서 입력 폼 -->
-      <div class="space-y-4">
+      <div class="space-y-4 shrink-0 pb-4">
         <div class="bg-[#131b2f] p-4 rounded-xl border border-white/5 space-y-3">
           <h3 class="text-sm font-semibold text-[#64ffda]">0. 기획자 정보</h3>
           <div class="flex gap-2">
@@ -307,10 +406,10 @@
           <div class="h-[1px] w-full bg-gradient-to-r from-white/30 via-white/10 to-transparent my-6 relative z-10 shrink-0"></div>
 
           <!-- 레이아웃 스왑 컨테이너 -->
-          <div id="layout-container" class="flex-1 flex gap-8 relative z-10 min-h-0 transition-all duration-500">
+          <div id="layout-container" class="layout-container relative z-10 min-h-0">
             
             <!-- 왼쪽 컬럼 (비주얼) -->
-            <div id="col-visual" class="w-[840px] h-[600px] flex flex-col shrink-0 transition-all">
+            <div id="col-visual" class="col-visual">
               <div class="h-full bg-white/5 border border-white/10 rounded-3xl flex flex-col p-6 backdrop-blur-md shadow-2xl box-border">
                 <h3 class="text-xl font-bold text-white/90 mb-4 flex items-center gap-2 tracking-widest shrink-0">
                   <div class="w-2.5 h-2.5 rounded-full shadow-[0_0_10px_currentColor] theme-accent-bg theme-accent-text"></div>
@@ -320,7 +419,7 @@
                   <img id="disp-uploaded-image" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="absolute inset-0 w-full h-full object-cover z-0 hidden" crossorigin="anonymous" />
                   <div id="disp-prompt-gradient" class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none z-0"></div>
                   <i class="ph ph-sparkle text-5xl mb-4 opacity-20 theme-accent-text relative z-10" id="disp-sparkle-icon"></i>
-                  <div id="disp-prompt-container" class="w-full max-h-[140px] overflow-y-auto canvas-scrollbar relative z-10 px-6">
+                  <div id="disp-prompt-container" class="w-full overflow-y-auto canvas-scrollbar relative z-10 px-6">
                     <p id="disp-visualPrompt" class="text-sm font-sans leading-relaxed text-white/90 break-words italic"></p>
                   </div>
                 </div>
@@ -328,40 +427,40 @@
             </div>
 
             <!-- 오른쪽 컬럼 (정보) -->
-            <div id="col-info" class="flex-1 h-[600px] flex flex-col gap-6 transition-all">
+            <div id="col-info" class="col-info">
               
-              <div id="sect-loop" class="h-[180px] bg-white/5 border border-white/10 rounded-3xl p-6 relative flex flex-col backdrop-blur-md shadow-2xl shrink-0">
+              <div id="sect-loop" class="sect-loop bg-white/5 border border-white/10 rounded-3xl relative backdrop-blur-md shadow-2xl box-border">
                 <h3 class="text-xl font-bold text-white/90 mb-2 flex items-center gap-2 tracking-widest shrink-0">
                   <div class="w-2.5 h-2.5 rounded-full theme-accent-bg"></div> CORE LOOP
                 </h3>
-                <div class="flex-1 flex items-center justify-between px-10 relative mt-2">
-                  <div class="absolute top-1/2 left-24 right-24 h-0.5 bg-white/10 -translate-y-1/2 border-dashed border-t border-white/20"></div>
-                  <div class="relative z-10 flex flex-col items-center"><div class="w-[100px] h-[100px] rounded-full border-[3px] bg-black/50 flex items-center justify-center text-center p-2 theme-title1-border"><span id="disp-loop-0" class="text-[13px] font-black leading-tight theme-title1-text break-keep overflow-hidden line-clamp-3 w-full"></span></div></div>
-                  <div class="relative z-10 flex flex-col items-center"><div class="w-[100px] h-[100px] rounded-full border-[3px] bg-black/50 flex items-center justify-center text-center p-2 theme-title2-border"><span id="disp-loop-1" class="text-[13px] font-black leading-tight theme-title2-text break-keep overflow-hidden line-clamp-3 w-full"></span></div></div>
-                  <div class="relative z-10 flex flex-col items-center"><div class="w-[100px] h-[100px] rounded-full border-[3px] bg-black/50 flex items-center justify-center text-center p-2 theme-accent-border"><span id="disp-loop-2" class="text-[13px] font-black leading-tight theme-accent-text break-keep overflow-hidden line-clamp-3 w-full"></span></div></div>
+                <div class="loop-container mt-2">
+                  <div class="loop-line"></div>
+                  <div class="relative z-10 flex flex-col items-center"><div class="loop-circle rounded-full border-[3px] bg-black/50 p-2 theme-title1-border"><span id="disp-loop-0" class="text-[13px] font-black leading-tight theme-title1-text break-keep overflow-hidden line-clamp-3 w-full"></span></div></div>
+                  <div class="relative z-10 flex flex-col items-center"><div class="loop-circle rounded-full border-[3px] bg-black/50 p-2 theme-title2-border"><span id="disp-loop-1" class="text-[13px] font-black leading-tight theme-title2-text break-keep overflow-hidden line-clamp-3 w-full"></span></div></div>
+                  <div class="relative z-10 flex flex-col items-center"><div class="loop-circle rounded-full border-[3px] bg-black/50 p-2 theme-accent-border"><span id="disp-loop-2" class="text-[13px] font-black leading-tight theme-accent-text break-keep overflow-hidden line-clamp-3 w-full"></span></div></div>
                 </div>
               </div>
 
-              <div id="sect-overview" class="h-[140px] bg-white/5 border border-white/10 rounded-3xl px-8 py-5 flex flex-col backdrop-blur-md shadow-2xl shrink-0">
-                <h3 class="text-xl font-bold text-white/90 mb-3 flex items-center gap-2 tracking-widest shrink-0">
+              <div id="sect-overview" class="sect-overview bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md shadow-2xl box-border">
+                <h3 class="text-xl font-bold text-white/90 flex items-center gap-2 tracking-widest shrink-0 mb-1">
                   <div class="w-2.5 h-2.5 rounded-full theme-accent-bg"></div> GAME OVERVIEW
                 </h3>
-                <div class="grid grid-cols-2 gap-x-12 gap-y-2 flex-1 items-center">
-                  <div class="flex items-center justify-between"><span class="text-xs font-bold uppercase theme-accent-text">장르</span><span id="disp-genre" class="text-sm font-semibold text-white/90 text-right truncate pl-4"></span></div>
-                  <div class="flex items-center justify-between"><span class="text-xs font-bold uppercase theme-accent-text">타겟</span><span id="disp-target" class="text-sm font-semibold text-white/90 text-right truncate pl-4"></span></div>
-                  <div class="flex items-center justify-between"><span class="text-xs font-bold uppercase theme-accent-text">플랫폼</span><span id="disp-platform" class="text-sm font-semibold text-white/90 text-right truncate pl-4"></span></div>
-                  <div class="flex items-center justify-between"><span class="text-xs font-bold uppercase theme-accent-text">엔진</span><span id="disp-engine" class="text-sm font-semibold text-white/90 text-right truncate pl-4"></span></div>
+                <div class="sect-overview-grid flex-1">
+                  <div class="flex items-center justify-between gap-4"><span class="text-xs font-bold uppercase theme-accent-text shrink-0 w-14">장르</span><span id="disp-genre" class="text-sm font-semibold text-white/90 text-right truncate flex-1"></span></div>
+                  <div class="flex items-center justify-between gap-4"><span class="text-xs font-bold uppercase theme-accent-text shrink-0 w-14">타겟</span><span id="disp-target" class="text-sm font-semibold text-white/90 text-right truncate flex-1"></span></div>
+                  <div class="flex items-center justify-between gap-4"><span class="text-xs font-bold uppercase theme-accent-text shrink-0 w-14">플랫폼</span><span id="disp-platform" class="text-sm font-semibold text-white/90 text-right truncate flex-1"></span></div>
+                  <div class="flex items-center justify-between gap-4"><span class="text-xs font-bold uppercase theme-accent-text shrink-0 w-14">엔진</span><span id="disp-engine" class="text-sm font-semibold text-white/90 text-right truncate flex-1"></span></div>
                 </div>
               </div>
 
-              <div id="sect-usp" class="flex-1 bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col backdrop-blur-md shadow-2xl">
-                <h3 class="text-xl font-bold text-white/90 mb-4 flex items-center gap-2 tracking-widest shrink-0">
+              <div id="sect-usp" class="sect-usp bg-white/5 border border-white/10 rounded-3xl backdrop-blur-md shadow-2xl box-border">
+                <h3 class="text-xl font-bold text-white/90 flex items-center gap-2 tracking-widest shrink-0 mb-3">
                   <div class="w-2.5 h-2.5 rounded-full theme-accent-bg"></div> KEY USP
                 </h3>
-                <div class="flex-1 flex flex-col justify-between gap-3">
-                  <div class="flex-1 flex items-center bg-black/30 px-5 rounded-xl border-l-[5px] theme-title1-border-left"><p id="disp-usp-0" class="text-sm font-medium text-white/85 line-clamp-2 leading-relaxed break-keep"></p></div>
-                  <div class="flex-1 flex items-center bg-black/30 px-5 rounded-xl border-l-[5px] theme-title2-border-left"><p id="disp-usp-1" class="text-sm font-medium text-white/85 line-clamp-2 leading-relaxed break-keep"></p></div>
-                  <div class="flex-1 flex items-center bg-black/30 px-5 rounded-xl border-l-[5px] theme-accent-border-left"><p id="disp-usp-2" class="text-sm font-medium text-white/85 line-clamp-2 leading-relaxed break-keep"></p></div>
+                <div class="flex-1 flex flex-col justify-between gap-2.5 h-full min-h-0">
+                  <div class="flex-1 min-h-[40px] flex items-center bg-black/30 px-5 py-2 rounded-xl border-l-[5px] theme-title1-border-left"><p id="disp-usp-0" class="text-[13px] font-medium text-white/85 line-clamp-2 leading-snug break-keep"></p></div>
+                  <div class="flex-1 min-h-[40px] flex items-center bg-black/30 px-5 py-2 rounded-xl border-l-[5px] theme-title2-border-left"><p id="disp-usp-1" class="text-[13px] font-medium text-white/85 line-clamp-2 leading-snug break-keep"></p></div>
+                  <div class="flex-1 min-h-[40px] flex items-center bg-black/30 px-5 py-2 rounded-xl border-l-[5px] theme-accent-border-left"><p id="disp-usp-2" class="text-[13px] font-medium text-white/85 line-clamp-2 leading-snug break-keep"></p></div>
                 </div>
               </div>
 
@@ -392,14 +491,6 @@
   </div>
 
   <script>
-    // --- 내장형 SVG 패턴 ---
-    const PATTERNS = {
-      carbon: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nOCcgaGVpZ2h0PSc4JyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnPjxwYXRoIGQ9J00wIDBoNHY0SDB6bTQgNGg0djRINFonIGZpbGw9J3JnYmEoMjU1LDI1NSwyNTUsMC4wNSknLz48L3N2Zz4=')",
-      dots: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMjQnIGhlaWdodD0nMjQnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zyc+PGNpcmNsZSBjeD0nMicgY3k9JzInIHI9JzEuNScgZmlsbD0ncmdiYSgyNTUsMjU1LDI1NSwwLjQpJy8+PC9zdmc+')",
-      grid: "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0nMjQnIGhlaWdodD0nMjQnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zyc+PHBhdGggZD0nTSAyNCAwIEwgMCAwIDAgMjQnIGZpbGw9J25vbmUnIHN0cm9rZT0ncmdiYSgyNTUsMjU1LDI1NSwwLjIpJyBzdHJva2Utd2lkdGg9JzEnLz48L3N2Zz4=')",
-      none: "none"
-    };
-
     const RANDOM_IDEAS = [
       "마법사가 되어 현대 도시에서 비밀 카페를 운영하는 시뮬레이션",
       "시간 여행을 하며 역사적 사건의 미스터리를 추리하는 어드벤처",
@@ -423,10 +514,9 @@
         coreLoop: ["탐험", "육성", "확장"]
       },
       theme: { 
-        bgPattern: "carbon", 
         baseHex: "#00f2fe",
         font: "font-noto",
-        layout: "default",
+        layout: "layout-classic",
         bgFrom: "", bgVia: "", bgTo: "", title1: "", title2: "", accent: ""
       },
       toggles: {
@@ -466,6 +556,14 @@
       handleSmartColorChange(state.theme.baseHex, false);
       fullRender();
       resizeCanvas();
+
+      const guideSeen = localStorage.getItem("pitch_editor_guide_seen");
+      if (!guideSeen) {
+        setTimeout(() => {
+          openHelpModal();
+          localStorage.setItem("pitch_editor_guide_seen", "true");
+        }, 500); 
+      }
     }
 
     function resizeCanvas() {
@@ -480,7 +578,7 @@
     function updateData(key, value) { state.data[key] = value; updateDOMTexts(); }
     function updateArrayData(arrKey, index, value) { state.data[arrKey][index] = value; updateDOMTexts(); }
     function updateTheme(key, value) { state.theme[key] = value; updateThemeStyles(); }
-    function updateToggle(key, value) { state.toggles[key] = value; updateVisibility(); }
+    function updateToggle(key, value) { state.toggles[key] = value; updateThemeStyles(); }
 
     function handleSmartColorChange(baseHex, shouldRender = true) {
       const {h, s, l} = hexToHSL(baseHex);
@@ -512,7 +610,6 @@
       updateDOMTexts();
       updateImageDOM();
       updateThemeStyles();
-      updateVisibility();
     }
 
     function updateInputs() {
@@ -528,7 +625,6 @@
       
       document.getElementById('select-font').value = state.theme.font;
       document.getElementById('select-layout').value = state.theme.layout;
-      document.getElementById('select-pattern').value = state.theme.bgPattern;
       
       Object.keys(state.toggles).forEach(k => {
         document.getElementById(`toggle-${k}`).checked = state.toggles[k];
@@ -604,26 +700,15 @@
       gddBoard.className = gddBoard.className.replace(/font-\w+/g, '');
       gddBoard.classList.add(state.theme.font);
 
-      const layoutContainer = document.getElementById('layout-container');
-      if (state.theme.layout === 'reversed') {
-        layoutContainer.classList.remove('flex-row');
-        layoutContainer.classList.add('flex-row-reverse');
-      } else {
-        layoutContainer.classList.remove('flex-row-reverse');
-        layoutContainer.classList.add('flex-row');
-      }
-
-      const pat = PATTERNS[state.theme.bgPattern] || PATTERNS.carbon;
-      const isDotGrid = state.theme.bgPattern === 'dots' || state.theme.bgPattern === 'grid';
-      ['canvas-bg-overlay', 'gdd-bg-overlay'].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) {
-          el.style.backgroundImage = pat;
-          el.style.opacity = isDotGrid ? '0.05' : '0.1';
-          el.style.backgroundSize = isDotGrid ? '24px 24px' : 'auto';
-        }
-      });
+      // 레이아웃 클래스 교체
+      board.className = board.className.replace(/layout-\w+/g, '');
+      board.classList.add(state.theme.layout);
       
+      board.classList.toggle('show-visual', state.toggles.showVisual);
+      board.classList.toggle('show-loop', state.toggles.showLoop);
+      board.classList.toggle('show-overview', state.toggles.showOverview);
+      board.classList.toggle('show-usp', state.toggles.showUsp);
+
       document.getElementById('smart-color-picker').value = state.theme.baseHex;
       
       const gddContent = document.getElementById('gdd-content');
@@ -633,31 +718,6 @@
       }
     }
 
-    function updateVisibility() {
-      document.getElementById('col-visual').style.display = state.toggles.showVisual ? 'flex' : 'none';
-      document.getElementById('sect-loop').style.display = state.toggles.showLoop ? 'flex' : 'none';
-      document.getElementById('sect-overview').style.display = state.toggles.showOverview ? 'flex' : 'none';
-      document.getElementById('sect-usp').style.display = state.toggles.showUsp ? 'flex' : 'none';
-      
-      const showInfo = state.toggles.showLoop || state.toggles.showOverview || state.toggles.showUsp;
-      document.getElementById('col-info').style.display = showInfo ? 'flex' : 'none';
-      
-      const visualCol = document.getElementById('col-visual');
-      const infoCol = document.getElementById('col-info');
-      
-      if (state.toggles.showVisual && showInfo) {
-        visualCol.style.width = '840px'; 
-        infoCol.style.flex = '1';
-        infoCol.style.width = 'auto';
-      } else if (state.toggles.showVisual && !showInfo) {
-        visualCol.style.width = '100%';
-      } else if (!state.toggles.showVisual && showInfo) {
-        infoCol.style.flex = 'none';
-        infoCol.style.width = '100%';
-      }
-    }
-
-    // --- UI Helpers ---
     function showMessage(msg, isError = true) {
       const container = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -675,6 +735,26 @@
     function insertRandomIdea() {
       const idea = RANDOM_IDEAS[Math.floor(Math.random() * RANDOM_IDEAS.length)];
       document.getElementById('input-idea-prompt').value = idea;
+    }
+
+    function openHelpModal() {
+      const modal = document.getElementById('help-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        document.getElementById('help-modal-content').classList.replace('scale-95', 'scale-100');
+      });
+    }
+
+    function closeHelpModal() {
+      const modal = document.getElementById('help-modal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      document.getElementById('help-modal-content').classList.replace('scale-100', 'scale-95');
+      setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+      }, 300);
     }
 
     function openApiKeyModal() { 
@@ -731,7 +811,7 @@
       iconNode.className = "ph ph-spinner animate-spin text-base";
       
       const idea = document.getElementById('input-idea-prompt').value.trim() || "random game idea";
-      // AI 프롬프트 복구: 강력한 한국어 및 글자 수 제한 조건 추가
+      // AI 프롬프트
       const prompt = `Create a new game pitch based on this core idea: "${idea}". Return ONLY a JSON object:
       {
         "title": "한글 제목 (공백 포함 최대 10자 이내로 아주 짧게)",
@@ -755,7 +835,6 @@
         const targetModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"];
         let text = null;
 
-        // API 모델 순차적 시도 (폴백 로직 복구)
         for (const model of targetModels) {
           try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`, {
@@ -766,7 +845,7 @@
             if (response.ok) {
               const data = await response.json();
               text = data.candidates[0].content.parts[0].text;
-              break; // 성공하면 루프 탈출
+              break; 
             }
           } catch(err) {
             console.warn(`${model} failed, trying next...`);
@@ -775,7 +854,6 @@
 
         if (!text) throw new Error("API 키 권한 오류 또는 호출 한도 초과입니다.");
 
-        // 안전한 JSON 파싱 정규식 복구
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) text = jsonMatch[0];
         
@@ -815,7 +893,7 @@
       textNode.textContent = "상세 기획서 작성 중...";
       iconNode.className = "ph ph-spinner animate-spin text-xl";
 
-      const prompt = `다음은 "${state.data.title}"라는 게임의 요약 기획서입니다.
+      const prompt = `다음은 "${state.data.title}"라는 게임의 요약 기획입니다.
       - 장르: ${state.data.genre}
       - 특징(USP): ${state.data.usps.join(', ')}
       - 코어루프: ${state.data.coreLoop.join(' -> ')}
@@ -831,7 +909,6 @@
         const targetModels = ["gemini-2.5-pro", "gemini-1.5-pro", "gemini-2.5-flash", "gemini-1.5-flash"];
         let htmlContent = null;
 
-        // GDD 모델 순차적 시도 (폴백 로직 복구)
         for (const model of targetModels) {
           try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${state.apiKey}`, {
@@ -871,7 +948,7 @@
         showMessage("GDD 생성 오류: " + e.message); 
       } finally { 
         btn.disabled = false; 
-        textNode.textContent = "GDD 다시 작성하기";
+        textNode.textContent = "GDD 자동 작성하기";
         iconNode.className = "ph ph-robot";
       }
     }
@@ -909,11 +986,11 @@
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1440, 810] });
           pdf.addImage(dataUrl, 'PNG', 0, 0, 1440, 810);
-          pdf.save(`${state.data.title.replace(/\s/g, '_')}_Pitch.pdf`);
+          pdf.save(`${state.data.title.replace(/\s/g, '_')}_기획.pdf`);
           showMessage("PDF 다운로드가 완료되었습니다.", false);
         } else {
           const link = document.createElement('a');
-          link.download = `${state.data.title.replace(/\s/g, '_')}_Pitch.png`;
+          link.download = `${state.data.title.replace(/\s/g, '_')}_기획.png`;
           link.href = dataUrl;
           link.click();
           showMessage("PNG 다운로드가 완료되었습니다.", false);
@@ -933,27 +1010,83 @@
       }
     }
 
+    async function copySvgToClipboard() {
+      const board = document.getElementById('pitch-board');
+      const wrapper = document.getElementById('scale-container');
+      const overlay = document.getElementById('download-overlay');
+      const btnSvg = document.getElementById('btn-copy-svg');
+      const iconSvg = document.getElementById('icon-copy-svg');
+      
+      if (!board) return;
+
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      requestAnimationFrame(() => overlay.classList.remove('opacity-0', 'pointer-events-none'));
+
+      const originalIconClass = iconSvg.className;
+      btnSvg.disabled = true;
+      iconSvg.className = "ph ph-spinner text-lg animate-spin";
+
+      try {
+        const originalTransform = wrapper.style.transform;
+        wrapper.style.transform = 'scale(1)'; 
+        
+        await new Promise(r => setTimeout(r, 600)); 
+
+        const dataUrl = await htmlToImage.toSvg(board, {
+          pixelRatio: 2, 
+          backgroundColor: '#0a101d',
+          style: {
+            transform: 'scale(1)',
+            transformOrigin: 'top left'
+          },
+          filter: (node) => {
+            if (node.classList && node.classList.contains('hidden')) return false;
+            return true;
+          }
+        });
+
+        wrapper.style.transform = originalTransform;
+
+        const svgData = dataUrl.substring(dataUrl.indexOf(',') + 1);
+        const svgString = decodeURIComponent(svgData);
+
+        const textArea = document.createElement("textarea");
+        textArea.value = svgString;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        showMessage("SVG 코드가 클립보드에 복사되었습니다! 피그마에 붙여넣기 해주세요.", false);
+      } catch (error) {
+        console.error("SVG 복사 에러:", error);
+        showMessage("SVG 복사 중 오류가 발생했습니다.");
+      } finally {
+        btnSvg.disabled = false;
+        iconSvg.className = originalIconClass;
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => {
+          overlay.classList.remove('flex');
+          overlay.classList.add('hidden');
+        }, 300);
+      }
+    }
+
     function downloadGDD() {
       if(!state.gdd) return;
-      const htmlString = `
-      <!DOCTYPE html><html><head><meta charset="UTF-8"><title>${state.data.title} - GDD</title>
-      <style>
-        body { font-family: 'Noto Sans KR', sans-serif; background: #0a101d; color: #cbd5e1; padding: 40px; max-width: 900px; margin: 0 auto; line-height: 1.6; }
-        h1 { color: #fff; font-size: 2.5rem; border-bottom: 1px solid #334155; padding-bottom: 20px; }
-        h2 { color: #00f2fe; margin-top: 40px; }
-        h3 { color: #fff; margin-top: 20px; }
-        ul { margin-left: 20px; }
-      </style></head><body>
-      <h1>${state.data.title} - 상세 기획서</h1>
-      ${state.gdd}
-      </body></html>`;
       
-      const blob = new Blob([htmlString], {type: "text/html"});
+      const turndownService = new TurndownService({ headingStyle: 'atx' });
+      let markdown = turndownService.turndown(state.gdd);
+      
+      markdown = `# ${state.data.title} - 상세 기획서\n\n` + markdown;
+
+      const blob = new Blob([markdown], {type: "text/markdown;charset=utf-8"});
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `${state.data.title.replace(/\s/g, '_')}_GDD.html`;
+      link.download = `${state.data.title.replace(/\s/g, '_')}_GDD.md`;
       link.click();
-      showMessage("GDD 문서가 저장되었습니다.", false);
+      showMessage("GDD 문서가 마크다운(.md)으로 저장되었습니다.", false);
     }
 
     window.onload = init;
