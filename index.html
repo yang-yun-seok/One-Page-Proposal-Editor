@@ -12,8 +12,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
-  <!-- 마크다운 변환 라이브러리 (HTML to Markdown) -->
-  <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+  <!-- 마크다운 렌더링 라이브러리 (Markdown to HTML) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <!-- 폰트 및 아이콘 CORS 보안 에러 완벽 차단 로더 -->
   <script>
@@ -903,7 +903,7 @@
       - 코어루프: ${state.data.coreLoop.join(' -> ')}
       
       이 정보를 바탕으로 게임의 상세 기획서(GDD)를 작성해주세요. 
-      반드시 한국어(Korean)로, HTML 형식으로 작성하며 (<h1>은 쓰지 말고 <h2>, <h3>, <p>, <ul> 위주로 구조화), 다음 4가지 섹션을 포함하세요.
+      반드시 한국어(Korean)로, 마크다운(Markdown) 형식으로 작성하며 (#, ##, -, ** 등 마크다운 문법 적극 활용), 다음 4가지 섹션을 포함하세요.
       1. 세계관 및 배경 스토리
       2. 핵심 시스템 (코어루프 기반 2~3개 상세히)
       3. 타겟 유저 분석
@@ -911,7 +911,7 @@
 
       try {
         const targetModels = ["gemini-2.5-pro", "gemini-1.5-pro", "gemini-2.5-flash", "gemini-1.5-flash"];
-        let htmlContent = null;
+        let markdownContent = null;
 
         for (const model of targetModels) {
           try {
@@ -922,7 +922,7 @@
             
             if (response.ok) {
               const data = await response.json();
-              htmlContent = data.candidates[0].content.parts[0].text;
+              markdownContent = data.candidates[0].content.parts[0].text;
               break;
             }
           } catch(err) {
@@ -930,14 +930,16 @@
           }
         }
 
-        if (!htmlContent) throw new Error("API 키 권한 오류 또는 호출 한도 초과입니다.");
+        if (!markdownContent) throw new Error("API 키 권한 오류 또는 호출 한도 초과입니다.");
 
-        htmlContent = htmlContent.replace(/```html/gi, '').replace(/```/g, '').trim();
+        // 불필요한 마크다운 코드블록 백틱 제거
+        markdownContent = markdownContent.replace(/```markdown/gi, '').replace(/```/g, '').trim();
         
-        state.gdd = htmlContent;
+        state.gdd = markdownContent;
         
         document.getElementById('gdd-subtitle').textContent = state.data.title + " - GDD";
-        document.getElementById('gdd-content').innerHTML = state.gdd;
+        // 화면 표시는 marked.js를 활용해 HTML로 변환하여 렌더링
+        document.getElementById('gdd-content').innerHTML = marked.parse(state.gdd);
         document.getElementById('gdd-board').classList.remove('hidden');
         
         updateThemeStyles();
@@ -1080,10 +1082,8 @@
     function downloadGDD() {
       if(!state.gdd) return;
       
-      const turndownService = new TurndownService({ headingStyle: 'atx' });
-      let markdown = turndownService.turndown(state.gdd);
-      
-      markdown = `# ${state.data.title} - 상세 기획서\n\n` + markdown;
+      // 다운로드는 생성된 마크다운 원본을 그대로 활용
+      let markdown = `# ${state.data.title} - 상세 기획서\n\n` + state.gdd;
 
       const blob = new Blob([markdown], {type: "text/markdown;charset=utf-8"});
       const link = document.createElement("a");
